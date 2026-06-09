@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "build:postcodes": "node scripts/build-postcode-master.js"
+    "build:postcodes": "node scripts/build-postcode-master.js",
+    "replace:stores": "node scripts/replace-stores.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

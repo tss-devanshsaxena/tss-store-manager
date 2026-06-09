@@ -72,7 +72,7 @@ The map shows the store location with a radius circle. The pincode search itself
 ### Frontend → Vercel
 1. Push `frontend/` to GitHub
 2. Import in Vercel → Framework: Vite
-3. Set env vars: `VITE_API_URL` (your Railway URL + `/api`), `VITE_GOOGLE_MAPS_KEY`
+3. Set env vars: `VITE_API_URL` (**must be `https://`** e.g. `https://your-app.up.railway.app/api`), `VITE_GOOGLE_MAPS_KEY`
 
 ---
 

@@ -164,10 +164,13 @@ router.put('/:id', (req, res) => {
   const updates = { id: req.params.id };
   const fields = [
     'store_name', 'email', 'phone', 'address', 'city_name', 'state_name',
-    'pincode', 'latitude', 'longitude', 'opening_time', 'closing_time', 'is_active'
+    'pincode', 'latitude', 'longitude', 'opening_time', 'closing_time',
+    'is_active', 'location_code', 'gstin'
   ];
   for (const f of fields) {
-    if (s[f] !== undefined) updates[f] = s[f];
+    if (s[f] !== undefined) {
+      updates[f] = (f === 'latitude' || f === 'longitude') ? parseFloat(s[f]) : s[f];
+    }
   }
   if (s.is_hyperlocal !== undefined) updates.is_hyperlocal = s.is_hyperlocal ? 1 : 0;
 

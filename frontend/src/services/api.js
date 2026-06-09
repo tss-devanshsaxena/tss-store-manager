@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const BASE_URL = import.meta.env.VITE_API_URL || '/api';
+let BASE_URL = import.meta.env.VITE_API_URL || '/api';
+// HTTPS pages cannot call http:// APIs (mixed content). Auto-upgrade in production.
+if (typeof window !== 'undefined' && window.location.protocol === 'https:' && BASE_URL.startsWith('http://')) {
+  BASE_URL = BASE_URL.replace(/^http:\/\//, 'https://');
+}
 
 const api = axios.create({ baseURL: BASE_URL });
 

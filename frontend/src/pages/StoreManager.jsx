@@ -3,17 +3,40 @@ import { storesApi } from '../services/api';
 import toast from 'react-hot-toast';
 import {
   Upload, Plus, Search, Store, MapPin, Phone, Mail,
-  Clock, CheckCircle, XCircle, Trash2, X, RefreshCw, Zap
+  Clock, CheckCircle, XCircle, Trash2, X, RefreshCw, Zap, Pencil
 } from 'lucide-react';
 import HyperlocalBadge from '../components/HyperlocalBadge';
 
-function AddStoreModal({ onClose, onSaved }) {
-  const [form, setForm] = useState({
-    store_name: '', address: '', city_name: '', state_name: '',
-    latitude: '', longitude: '', pincode: '', phone: '', email: '',
-    opening_time: '10:00:00', closing_time: '22:00:00', gstin: '', location_code: '',
-    is_hyperlocal: false
-  });
+const EMPTY_FORM = {
+  store_name: '', address: '', city_name: '', state_name: '',
+  latitude: '', longitude: '', pincode: '', phone: '', email: '',
+  opening_time: '10:00:00', closing_time: '22:00:00', gstin: '', location_code: '',
+  is_hyperlocal: false, is_active: true,
+};
+
+function storeToForm(store) {
+  return {
+    store_name: store.store_name || '',
+    address: store.address || '',
+    city_name: store.city_name || '',
+    state_name: store.state_name || '',
+    latitude: String(store.latitude ?? ''),
+    longitude: String(store.longitude ?? ''),
+    pincode: store.pincode || '',
+    phone: store.phone || '',
+    email: store.email || '',
+    opening_time: store.opening_time || '10:00:00',
+    closing_time: store.closing_time || '22:00:00',
+    gstin: store.gstin || '',
+    location_code: store.location_code || '',
+    is_hyperlocal: !!store.is_hyperlocal,
+    is_active: store.is_active !== 0,
+  };
+}
+
+function StoreFormModal({ store, onClose, onSaved }) {
+  const isEdit = !!store;
+  const [form, setForm] = useState(() => (store ? storeToForm(store) : { ...EMPTY_FORM }));
   const [saving, setSaving] = useState(false);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -26,12 +49,22 @@ function AddStoreModal({ onClose, onSaved }) {
     }
     setSaving(true);
     try {
-      await storesApi.create(form);
-      toast.success('Store added!');
+      const payload = {
+        ...form,
+        is_active: form.is_active ? 1 : 0,
+        is_hyperlocal: form.is_hyperlocal,
+      };
+      if (isEdit) {
+        await storesApi.update(store.id, payload);
+        toast.success('Store updated!');
+      } else {
+        await storesApi.create(payload);
+        toast.success('Store added!');
+      }
       onSaved();
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to add store');
+      toast.error(err.response?.data?.error || `Failed to ${isEdit ? 'update' : 'add'} store`);
     } finally {
       setSaving(false);
     }
@@ -41,7 +74,10 @@ function AddStoreModal({ onClose, onSaved }) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Add New Store</h2>
+          <div>
+            <h2 className="text-lg font-semibold">{isEdit ? 'Edit Store' : 'Add New Store'}</h2>
+            {isEdit && <p className="text-xs text-gray-400 mt-0.5">ID {store.id} · changing lat/lon clears pincode cache</p>}
+          </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
