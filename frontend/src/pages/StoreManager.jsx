@@ -134,7 +134,7 @@ function StoreFormModal({ store, onClose, onSaved }) {
               <label className="block text-sm font-medium text-gray-700 mb-1">GSTIN</label>
               <input className="input" value={form.gstin} onChange={e => set('gstin', e.target.value)} placeholder="27AAECT9591L1ZI" />
             </div>
-            <div className="sm:col-span-2">
+            <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-gray-200 hover:border-violet-300 transition-colors">
                 <input
                   type="checkbox"
@@ -145,17 +145,32 @@ function StoreFormModal({ store, onClose, onSaved }) {
                 <div>
                   <p className="text-sm font-medium text-gray-800 flex items-center gap-2">
                     <Zap className="w-4 h-4 text-violet-600" />
-                    Mark as Hyperlocal
+                    Hyperlocal
                   </p>
-                  <p className="text-xs text-gray-500">Shows a full-color Hyperlocal badge on this store</p>
                 </div>
               </label>
+              {isEdit && (
+                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-gray-200 hover:border-green-300 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={form.is_active}
+                    onChange={e => set('is_active', e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800 flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      Active store
+                    </p>
+                  </div>
+                </label>
+              )}
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
             <button type="submit" disabled={saving} className="btn-primary flex items-center gap-2">
-              {saving ? <><RefreshCw className="w-4 h-4 animate-spin" />Saving...</> : 'Add Store'}
+              {saving ? <><RefreshCw className="w-4 h-4 animate-spin" />Saving...</> : (isEdit ? 'Save Changes' : 'Add Store')}
             </button>
           </div>
         </form>
@@ -170,6 +185,7 @@ export default function StoreManager() {
   const [search, setSearch] = useState('');
   const [uploading, setUploading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingStore, setEditingStore] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -240,7 +256,14 @@ export default function StoreManager() {
   return (
     <div className="h-full overflow-y-auto">
     <div className="p-6 space-y-6 pb-10">
-      {showAddModal && <AddStoreModal onClose={() => setShowAddModal(false)} onSaved={loadStores} />}
+      {showAddModal && <StoreFormModal onClose={() => setShowAddModal(false)} onSaved={loadStores} />}
+      {editingStore && (
+        <StoreFormModal
+          store={editingStore}
+          onClose={() => setEditingStore(null)}
+          onSaved={loadStores}
+        />
+      )}
 
       {/* Header */}
       <div className="flex items-start justify-between">
@@ -373,16 +396,25 @@ export default function StoreManager() {
                       </button>
                     </td>
                     <td className="px-4 py-3">
-                      {deleteConfirm === store.id ? (
-                        <div className="flex items-center gap-1">
-                          <button onClick={() => handleDelete(store.id)} className="text-xs text-red-600 font-medium hover:text-red-800">Confirm</button>
-                          <button onClick={() => setDeleteConfirm(null)} className="text-xs text-gray-400 hover:text-gray-600 ml-1">Cancel</button>
-                        </div>
-                      ) : (
-                        <button onClick={() => setDeleteConfirm(store.id)} className="text-gray-400 hover:text-red-500 transition-colors">
-                          <Trash2 className="w-4 h-4" />
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setEditingStore(store)}
+                          className="text-gray-400 hover:text-tss-red transition-colors"
+                          title="Edit store"
+                        >
+                          <Pencil className="w-4 h-4" />
                         </button>
-                      )}
+                        {deleteConfirm === store.id ? (
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => handleDelete(store.id)} className="text-xs text-red-600 font-medium hover:text-red-800">Confirm</button>
+                            <button onClick={() => setDeleteConfirm(null)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => setDeleteConfirm(store.id)} className="text-gray-400 hover:text-red-500 transition-colors" title="Delete store">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
