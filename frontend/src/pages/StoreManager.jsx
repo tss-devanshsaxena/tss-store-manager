@@ -36,7 +36,7 @@ function storeToForm(store) {
   };
 }
 
-function StoreFormModal({ store, onClose, onSaved }) {
+function StoreFormModal({ store, onClose, onSaved, onAccessDenied }) {
   const isEdit = !!store;
   const [form, setForm] = useState(() => (store ? storeToForm(store) : { ...EMPTY_FORM }));
   const [saving, setSaving] = useState(false);
@@ -66,7 +66,12 @@ function StoreFormModal({ store, onClose, onSaved }) {
       onSaved();
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.error || `Failed to ${isEdit ? 'update' : 'add'} store`);
+      if (err.response?.status === 403) {
+        onAccessDenied?.(isEdit ? 'edit stores' : 'add new stores');
+        onClose();
+      } else {
+        toast.error(err.response?.data?.error || `Failed to ${isEdit ? 'update' : 'add'} store`);
+      }
     } finally {
       setSaving(false);
     }
@@ -235,6 +240,7 @@ export default function StoreManager() {
       loadStores();
     } catch (err) {
       if (err instanceof SyntaxError) toast.error('Invalid JSON file');
+      else if (err.response?.status === 403) setAccessDeniedAction('bulk upload stores');
       else toast.error(err.response?.data?.error || 'Upload failed');
     } finally {
       setUploading(false);
@@ -248,8 +254,12 @@ export default function StoreManager() {
       await storesApi.update(store.id, { is_hyperlocal: next });
       setStores(s => s.map(x => x.id === store.id ? { ...x, is_hyperlocal: next ? 1 : 0 } : x));
       toast.success(next ? 'Marked as Hyperlocal' : 'Hyperlocal badge removed');
-    } catch {
-      toast.error('Failed to update store');
+    } catch (err) {
+      if (err.response?.status === 403) {
+        setAccessDeniedAction('edit stores');
+      } else {
+        toast.error('Failed to update store');
+      }
     }
   };
 
@@ -284,12 +294,19 @@ export default function StoreManager() {
           onClose={() => setAccessDeniedAction(null)}
         />
       )}
-      {showAddModal && <StoreFormModal onClose={() => setShowAddModal(false)} onSaved={loadStores} />}
+      {showAddModal && (
+        <StoreFormModal
+          onClose={() => setShowAddModal(false)}
+          onSaved={loadStores}
+          onAccessDenied={setAccessDeniedAction}
+        />
+      )}
       {editingStore && (
         <StoreFormModal
           store={editingStore}
           onClose={() => setEditingStore(null)}
           onSaved={loadStores}
+          onAccessDenied={setAccessDeniedAction}
         />
       )}
 
@@ -414,7 +431,7 @@ export default function StoreManager() {
                     </td>
                     <td className="px-4 py-3">
                       <button
-                        onClick={() => toggleHyperlocal(store)}
+                        onClick={() => requireAdmin('edit stores', () => toggleHyperlocal(store))}
                         title={store.is_hyperlocal ? 'Remove Hyperlocal badge' : 'Mark as Hyperlocal'}
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
                           store.is_hyperlocal
@@ -429,7 +446,7 @@ export default function StoreManager() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => setEditingStore(store)}
+                          onClick={() => requireAdmin('edit stores', () => setEditingStore(store))}
                           className="text-gray-400 hover:text-tss-red transition-colors"
                           title="Edit store"
                         >

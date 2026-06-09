@@ -32,7 +32,7 @@ npm run dev            # opens http://localhost:5173
 
 Configure `SLACK_BOT_TOKEN` in `backend/.env` (see `.env.example`). The Slack app needs `users:read.email`, `chat:write`, and `im:write` scopes.
 
-**Store admin:** only `devansh.saxena@thesouledstore.com` can add, delete, or bulk-upload stores.
+**Store admin:** only `devansh.saxena@thesouledstore.com` can add, edit, delete, or bulk-upload stores.
 
 ---
 

@@ -156,7 +156,7 @@ router.post('/', adminMiddleware, (req, res) => {
   res.status(201).json(store);
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id', adminMiddleware, (req, res) => {
   const s = req.body;
   const db = getDb();
   const existing = db.prepare('SELECT id, latitude, longitude FROM stores WHERE id = ?').get(req.params.id);
