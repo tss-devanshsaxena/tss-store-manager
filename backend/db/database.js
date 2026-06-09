@@ -1,6 +1,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const bcrypt = require('bcryptjs');
+const { seedStoresIfEmpty } = require('../lib/importStores');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'store_dashboard.db');
 
@@ -94,6 +95,8 @@ function initSchema() {
       'TSS Admin'
     );
   }
+
+  seedStoresIfEmpty(db);
 }
 
 function migrateStores() {
