@@ -5,3 +5,6 @@ node_modules/
 .env
 dist/
 .DS_Store
+
+# Store seed data may contain Slack webhooks — import locally, do not commit
+backend/data/tss-stores.json

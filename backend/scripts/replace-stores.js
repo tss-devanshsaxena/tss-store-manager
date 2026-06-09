@@ -72,7 +72,7 @@ const mapStore = (s) => ({
   local_feed_code: s.local_feed_code ?? null,
   gst_arn: s.gst_arn || '',
   gstin: s.gstin || '',
-  slack_group_url: s.slack_group_url || '',
+  slack_group_url: String(s.slack_group_url || '').includes('hooks.slack.com') ? '' : (s.slack_group_url || ''),
   city_name: s.city_name || '',
   state_name: s.state_name || '',
   state_id: s.state_id ?? null,
