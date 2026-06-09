@@ -4,6 +4,7 @@ const { authMiddleware } = require('../middleware/auth');
 const { isServiceablePincode, getMasterCount } = require('../lib/postcodeMaster');
 const { getCachedSearch, saveCache } = require('../lib/pincodeCache');
 const { queryOverpass } = require('../lib/overpassClient');
+const { isPincodePlausibleAtCoords } = require('../lib/pincodeRegion');
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -26,6 +27,7 @@ function buildResponse(pincodes, totalFound, excluded, excludedPincodes, radiusK
     total_found: totalFound,
     excluded,
     excluded_pincodes: excludedPincodes,
+    mislabeled_filtered: extra.mislabeled_filtered ?? 0,
     shiprocket_master_count: getMasterCount(),
     range: radiusKm,
     pincodes,
@@ -64,6 +66,7 @@ out body;
 
   const data = await queryOverpass(query, fallbackQuery, dedupeKey);
   const seen = new Map();
+  let mislabeledFiltered = 0;
 
   for (const el of data.elements) {
     const pincode =
@@ -79,6 +82,11 @@ out body;
 
     const dist = haversine(latitude, longitude, elLat, elLon);
     if (dist > radiusKm) continue;
+
+    if (!isPincodePlausibleAtCoords(pincode, elLat, elLon)) {
+      mislabeledFiltered += 1;
+      continue;
+    }
 
     if (!seen.has(pincode) || seen.get(pincode).distance > dist) {
       seen.set(pincode, {
@@ -96,7 +104,7 @@ out body;
   const allResults = Array.from(seen.values()).sort((a, b) => a.distance - b.distance);
   const results = allResults.filter((p) => isServiceablePincode(p.pincode));
   const excludedResults = allResults.filter((p) => !isServiceablePincode(p.pincode));
-  return { allResults, results, excludedResults };
+  return { allResults, results, excludedResults, mislabeledFiltered };
 }
 
 router.get('/nearby', async (req, res) => {
@@ -148,7 +156,7 @@ router.get('/nearby', async (req, res) => {
     }
 
     const dedupeKey = storeId ? `${storeId}:${radiusKm}` : null;
-    const { allResults, results, excludedResults } = await fetchPincodesFromOverpass(
+    const { allResults, results, excludedResults, mislabeledFiltered } = await fetchPincodesFromOverpass(
       latitude, longitude, radiusKm, dedupeKey
     );
     const totalFound = allResults.length;
@@ -159,7 +167,10 @@ router.get('/nearby', async (req, res) => {
       console.log(`Cached ${results.length} pincodes for store ${storeId} @ ${radiusKm}km`);
     }
 
-    res.json(buildResponse(results, totalFound, excluded, excludedResults, radiusKm, { cached: false }));
+    res.json(buildResponse(results, totalFound, excluded, excludedResults, radiusKm, {
+      cached: false,
+      mislabeled_filtered: mislabeledFiltered,
+    }));
 
   } catch (err) {
     console.error('Pincode search failed:', err.message);
