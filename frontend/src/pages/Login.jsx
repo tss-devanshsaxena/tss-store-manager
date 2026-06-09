@@ -3,15 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../services/api';
 import toast from 'react-hot-toast';
+import { ShieldAlert } from 'lucide-react';
 import Logo from '../components/Logo';
 
 const EMAIL_DOMAIN = '@thesouledstore.com';
+const ADMIN_CONTACT = 'devansh.saxena@thesouledstore.com';
 
 export default function Login() {
   const [step, setStep] = useState('email');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
+  const [pendingApproval, setPendingApproval] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -30,8 +33,11 @@ export default function Login() {
 
     setLoading(true);
     try {
-      await authApi.requestOtp(normalizedEmail);
-      toast.success('OTP sent to your Slack DM');
+      const { data } = await authApi.requestOtp(normalizedEmail);
+      setPendingApproval(!!data.pending_approval);
+      if (data.authorized) {
+        toast.success('OTP sent to your Slack DM');
+      }
       setStep('otp');
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to send OTP');
@@ -43,7 +49,7 @@ export default function Login() {
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     if (!otp.trim()) {
-      toast.error('Enter the OTP from Slack');
+      toast.error(pendingApproval ? 'Enter the OTP shared by Devansh' : 'Enter the OTP from Slack');
       return;
     }
 
@@ -81,7 +87,9 @@ export default function Login() {
           <p className="text-sm text-gray-500 mb-6">
             {step === 'email'
               ? 'Enter your Souled Store email to receive a one-time code on Slack.'
-              : `We sent a code to Slack for ${normalizedEmail}`}
+              : pendingApproval
+                ? `Access approval is required for ${normalizedEmail}`
+                : `We sent a code to Slack for ${normalizedEmail}`}
           </p>
 
           {step === 'email' ? (
@@ -115,6 +123,24 @@ export default function Login() {
             </form>
           ) : (
             <form onSubmit={handleVerifyOtp} className="space-y-5">
+              {pendingApproval && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  <div className="flex gap-2">
+                    <ShieldAlert className="w-5 h-5 flex-shrink-0 text-amber-600" />
+                    <div>
+                      <p className="font-medium">You are not authorised to access this portal yet.</p>
+                      <p className="mt-1 text-amber-800">
+                        Please check with{' '}
+                        <a href={`mailto:${ADMIN_CONTACT}`} className="font-medium underline">
+                          {ADMIN_CONTACT}
+                        </a>{' '}
+                        for the OTP to get logged in. MrSoul has notified them of your request.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">One-time password</label>
                 <input
@@ -151,6 +177,7 @@ export default function Login() {
                 onClick={() => {
                   setStep('email');
                   setOtp('');
+                  setPendingApproval(false);
                 }}
                 className="w-full text-sm text-gray-500 hover:text-gray-700"
               >

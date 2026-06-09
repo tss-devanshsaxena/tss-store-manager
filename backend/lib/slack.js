@@ -30,7 +30,7 @@ async function slackPost(method, payload, useForm = false) {
   return res.json();
 }
 
-async function sendOtpToSlack(email, otp) {
+async function lookupSlackUser(email) {
   const lookup = await slackPost('users.lookupByEmail', { email }, true);
   if (!lookup.ok) {
     if (lookup.error === 'users_not_found') {
@@ -38,15 +38,44 @@ async function sendOtpToSlack(email, otp) {
     }
     throw new Error(lookup.error || 'Slack lookup failed');
   }
+  return lookup.user;
+}
 
+async function sendSlackDm(email, text) {
+  const user = await lookupSlackUser(email);
   const message = await slackPost('chat.postMessage', {
-    channel: lookup.user.id,
-    text: `Your TSS Store Dashboard login code is: *${otp}*\n\nThis code expires in 10 minutes. If you did not request this, ignore this message.`,
+    channel: user.id,
+    text,
+    username: 'MrSoul',
   });
 
   if (!message.ok) {
-    throw new Error(message.error || 'Failed to send OTP on Slack');
+    throw new Error(message.error || 'Failed to send Slack message');
   }
 }
 
-module.exports = { isSouledStoreEmail, sendOtpToSlack, ALLOWED_DOMAIN };
+async function sendOtpToSlack(email, otp) {
+  await sendSlackDm(
+    email,
+    `*MrSoul* — TSS Store Dashboard\n\nYour login code is: *${otp}*\n\nThis code expires in 10 minutes. If you did not request this, ignore this message.`
+  );
+}
+
+async function sendPendingAccessToAdmin(adminEmail, requesterEmail, otp) {
+  const displayName = requesterEmail.split('@')[0].replace(/\./g, ' ');
+  await sendSlackDm(
+    adminEmail,
+    `*MrSoul* — TSS Store Dashboard access request\n\n` +
+      `*${requesterEmail}* (${displayName}) tried to sign in but is not onboarded yet.\n\n` +
+      `*OTP for first-time onboarding:* \`${otp}\`\n\n` +
+      `Share this OTP with them so they can complete their first login. ` +
+      `After that, they will receive OTPs directly on Slack.`
+  );
+}
+
+module.exports = {
+  isSouledStoreEmail,
+  sendOtpToSlack,
+  sendPendingAccessToAdmin,
+  ALLOWED_DOMAIN,
+};

@@ -1,6 +1,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const { seedStoresIfEmpty } = require('../lib/importStores');
+const { seedAuthorizedUsers } = require('../lib/authorizedUsers');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'store_dashboard.db');
 
@@ -78,6 +79,16 @@ function initSchema() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS authorized_users (
+      email TEXT PRIMARY KEY,
+      authorized_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      authorized_by TEXT
+    );
+  `);
+
+  seedAuthorizedUsers(db);
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS pincode_search_cache (

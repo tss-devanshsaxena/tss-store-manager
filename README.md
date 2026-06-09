@@ -24,11 +24,12 @@ npm install
 npm run dev            # opens http://localhost:5173
 ```
 
-### 3. Login (Slack OTP)
+### 3. Login (Slack OTP + access control)
 
 1. Enter your `@thesouledstore.com` email on the login page
-2. Check Slack for a 6-digit OTP in your DM
-3. Enter the code to sign in
+2. **Onboarded users** receive a 6-digit OTP in their Slack DM (from MrSoul)
+3. **New users** see an unauthorised message — MrSoul notifies `devansh.saxena@thesouledstore.com` with the OTP to share for first-time onboarding
+4. After first successful login, the user is auto-approved and gets OTPs directly on Slack next time
 
 Configure `SLACK_BOT_TOKEN` in `backend/.env` (see `.env.example`). The Slack app needs `users:read.email`, `chat:write`, and `im:write` scopes.
 
