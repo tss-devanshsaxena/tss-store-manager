@@ -24,11 +24,15 @@ npm install
 npm run dev            # opens http://localhost:5173
 ```
 
-### 3. Default Login
-```
-Email:    admin@thesouledstore.com
-Password: TSS@admin123
-```
+### 3. Login (Slack OTP)
+
+1. Enter your `@thesouledstore.com` email on the login page
+2. Check Slack for a 6-digit OTP in your DM
+3. Enter the code to sign in
+
+Configure `SLACK_BOT_TOKEN` in `backend/.env` (see `.env.example`). The Slack app needs `users:read.email`, `chat:write`, and `im:write` scopes.
+
+**Store admin:** only `devansh.saxena@thesouledstore.com` can add, delete, or bulk-upload stores.
 
 ---
 

@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { storesApi } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import AccessDeniedModal from '../components/AccessDeniedModal';
 import toast from 'react-hot-toast';
 import {
   Upload, Plus, Search, Store, MapPin, Phone, Mail,
@@ -180,6 +182,7 @@ function StoreFormModal({ store, onClose, onSaved }) {
 }
 
 export default function StoreManager() {
+  const { isAdmin } = useAuth();
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -187,7 +190,16 @@ export default function StoreManager() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingStore, setEditingStore] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [accessDeniedAction, setAccessDeniedAction] = useState(null);
   const fileInputRef = useRef(null);
+
+  const requireAdmin = (action, callback) => {
+    if (!isAdmin) {
+      setAccessDeniedAction(action);
+      return;
+    }
+    callback();
+  };
 
   useEffect(() => { loadStores(); }, []);
 
@@ -204,6 +216,11 @@ export default function StoreManager() {
   };
 
   const handleBulkUpload = async (e) => {
+    if (!isAdmin) {
+      setAccessDeniedAction('bulk upload stores');
+      e.target.value = '';
+      return;
+    }
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.name.endsWith('.json')) { toast.error('Please upload a JSON file'); return; }
@@ -242,8 +259,13 @@ export default function StoreManager() {
       toast.success('Store deleted');
       setStores(s => s.filter(x => x.id !== id));
       setDeleteConfirm(null);
-    } catch {
-      toast.error('Delete failed');
+    } catch (err) {
+      if (err.response?.status === 403) {
+        setDeleteConfirm(null);
+        setAccessDeniedAction('delete stores');
+      } else {
+        toast.error(err.response?.data?.error || 'Delete failed');
+      }
     }
   };
 
@@ -256,6 +278,12 @@ export default function StoreManager() {
   return (
     <div className="h-full overflow-y-auto">
     <div className="p-6 space-y-6 pb-10">
+      {accessDeniedAction && (
+        <AccessDeniedModal
+          action={accessDeniedAction}
+          onClose={() => setAccessDeniedAction(null)}
+        />
+      )}
       {showAddModal && <StoreFormModal onClose={() => setShowAddModal(false)} onSaved={loadStores} />}
       {editingStore && (
         <StoreFormModal
@@ -274,13 +302,16 @@ export default function StoreManager() {
         <div className="flex gap-2">
           <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleBulkUpload} />
           <button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => requireAdmin('bulk upload stores', () => fileInputRef.current?.click())}
             disabled={uploading}
             className="btn-secondary flex items-center gap-2 text-sm"
           >
             {uploading ? <><RefreshCw className="w-4 h-4 animate-spin" />Uploading...</> : <><Upload className="w-4 h-4" />Bulk Upload JSON</>}
           </button>
-          <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2 text-sm">
+          <button
+            onClick={() => requireAdmin('add new stores', () => setShowAddModal(true))}
+            className="btn-primary flex items-center gap-2 text-sm"
+          >
             <Plus className="w-4 h-4" />Add Store
           </button>
         </div>
@@ -410,7 +441,11 @@ export default function StoreManager() {
                             <button onClick={() => setDeleteConfirm(null)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
                           </div>
                         ) : (
-                          <button onClick={() => setDeleteConfirm(store.id)} className="text-gray-400 hover:text-red-500 transition-colors" title="Delete store">
+                          <button
+                            onClick={() => requireAdmin('delete stores', () => setDeleteConfirm(store.id))}
+                            className="text-gray-400 hover:text-red-500 transition-colors"
+                            title="Delete store"
+                          >
                             <Trash2 className="w-4 h-4" />
                           </button>
                         )}

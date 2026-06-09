@@ -2,6 +2,7 @@ const express = require('express');
 const { getDb } = require('../db/database');
 const { authMiddleware } = require('../middleware/auth');
 const { clearStoreCache } = require('../lib/pincodeCache');
+const { adminMiddleware } = require('../middleware/admin');
 
 const router = express.Router();
 
@@ -25,7 +26,7 @@ router.get('/:id', (req, res) => {
   res.json(store);
 });
 
-router.post('/bulk', (req, res) => {
+router.post('/bulk', adminMiddleware, (req, res) => {
   const { stores } = req.body;
   if (!Array.isArray(stores) || stores.length === 0) {
     return res.status(400).json({ error: 'stores array required' });
@@ -113,7 +114,7 @@ router.post('/bulk', (req, res) => {
   res.json({ message: 'Bulk upload successful', ...result, total: stores.length });
 });
 
-router.post('/', (req, res) => {
+router.post('/', adminMiddleware, (req, res) => {
   const s = req.body;
   if (!s.store_name || !s.latitude || !s.longitude) {
     return res.status(400).json({ error: 'store_name, latitude, longitude required' });
@@ -189,7 +190,7 @@ router.put('/:id', (req, res) => {
   res.json(db.prepare('SELECT * FROM stores WHERE id = ?').get(req.params.id));
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', adminMiddleware, (req, res) => {
   const db = getDb();
   const result = db.prepare('DELETE FROM stores WHERE id = ?').run(req.params.id);
   if (result.changes === 0) return res.status(404).json({ error: 'Store not found' });

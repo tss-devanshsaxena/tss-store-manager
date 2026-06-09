@@ -9,7 +9,13 @@ function authMiddleware(req, res, next) {
   }
   try {
     const token = header.split(' ')[1];
-    req.user = jwt.verify(token, JWT_SECRET);
+    const payload = jwt.verify(token, JWT_SECRET);
+    req.user = {
+      id: payload.id,
+      email: payload.email,
+      name: payload.name,
+      isAdmin: !!payload.isAdmin,
+    };
     next();
   } catch {
     return res.status(401).json({ error: 'Invalid token' });

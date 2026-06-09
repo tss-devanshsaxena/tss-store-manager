@@ -17,7 +17,7 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    if (err.response?.status === 401 && !err.config?.url?.includes('/auth/')) {
       localStorage.removeItem('tss_token');
       localStorage.removeItem('tss_user');
       window.location.href = '/login';
@@ -27,9 +27,8 @@ api.interceptors.response.use(
 );
 
 export const authApi = {
-  login: (email, password) => api.post('/auth/login', { email, password }),
-  changePassword: (currentPassword, newPassword) =>
-    api.post('/auth/change-password', { currentPassword, newPassword })
+  requestOtp: (email) => api.post('/auth/request-otp', { email }),
+  verifyOtp: (email, otp) => api.post('/auth/verify-otp', { email, otp }),
 };
 
 export const storesApi = {

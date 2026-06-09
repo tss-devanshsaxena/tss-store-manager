@@ -20,11 +20,12 @@ function haversine(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function buildResponse(pincodes, totalFound, excluded, radiusKm, extra = {}) {
+function buildResponse(pincodes, totalFound, excluded, excludedPincodes, radiusKm, extra = {}) {
   return {
     count: pincodes.length,
     total_found: totalFound,
     excluded,
+    excluded_pincodes: excludedPincodes,
     shiprocket_master_count: getMasterCount(),
     range: radiusKm,
     pincodes,
@@ -94,7 +95,8 @@ out body;
 
   const allResults = Array.from(seen.values()).sort((a, b) => a.distance - b.distance);
   const results = allResults.filter((p) => isServiceablePincode(p.pincode));
-  return { allResults, results };
+  const excludedResults = allResults.filter((p) => !isServiceablePincode(p.pincode));
+  return { allResults, results, excludedResults };
 }
 
 router.get('/nearby', async (req, res) => {
@@ -131,32 +133,33 @@ router.get('/nearby', async (req, res) => {
           cached.pincodes,
           cached.total_found,
           cached.excluded,
+          cached.excluded_pincodes || [],
           radiusKm,
           { cached: true, cached_at: cached.cached_at }
         ));
       }
       if (cacheOnly) {
-        return res.json(buildResponse([], 0, 0, radiusKm, { cached: false }));
+        return res.json(buildResponse([], 0, 0, [], radiusKm, { cached: false }));
       }
     }
 
     if (cacheOnly) {
-      return res.json(buildResponse([], 0, 0, radiusKm, { cached: false }));
+      return res.json(buildResponse([], 0, 0, [], radiusKm, { cached: false }));
     }
 
     const dedupeKey = storeId ? `${storeId}:${radiusKm}` : null;
-    const { allResults, results } = await fetchPincodesFromOverpass(
+    const { allResults, results, excludedResults } = await fetchPincodesFromOverpass(
       latitude, longitude, radiusKm, dedupeKey
     );
     const totalFound = allResults.length;
-    const excluded = totalFound - results.length;
+    const excluded = excludedResults.length;
 
     if (storeId) {
-      saveCache(storeId, radiusKm, latitude, longitude, results, totalFound, excluded);
+      saveCache(storeId, radiusKm, latitude, longitude, results, totalFound, excluded, excludedResults);
       console.log(`Cached ${results.length} pincodes for store ${storeId} @ ${radiusKm}km`);
     }
 
-    res.json(buildResponse(results, totalFound, excluded, radiusKm, { cached: false }));
+    res.json(buildResponse(results, totalFound, excluded, excludedResults, radiusKm, { cached: false }));
 
   } catch (err) {
     console.error('Pincode search failed:', err.message);
@@ -171,6 +174,7 @@ router.get('/nearby', async (req, res) => {
             stale.pincodes,
             stale.total_found,
             stale.excluded,
+            stale.excluded_pincodes || [],
             radiusKm,
             { cached: true, cached_at: stale.cached_at, stale_fallback: true }
           ));

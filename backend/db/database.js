@@ -1,6 +1,5 @@
 const Database = require('better-sqlite3');
 const path = require('path');
-const bcrypt = require('bcryptjs');
 const { seedStoresIfEmpty } = require('../lib/importStores');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'store_dashboard.db');
@@ -72,6 +71,15 @@ function initSchema() {
   migrateStores();
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS otp_codes (
+      email TEXT PRIMARY KEY,
+      code TEXT NOT NULL,
+      expires_at DATETIME NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  db.exec(`
     CREATE TABLE IF NOT EXISTS pincode_search_cache (
       store_id INTEGER NOT NULL,
       range_km REAL NOT NULL,
@@ -84,17 +92,6 @@ function initSchema() {
       PRIMARY KEY (store_id, range_km)
     );
   `);
-
-  // Seed default admin user
-  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get('admin@thesouledstore.com');
-  if (!existing) {
-    const hashed = bcrypt.hashSync('TSS@admin123', 10);
-    db.prepare('INSERT INTO users (email, password, name) VALUES (?, ?, ?)').run(
-      'admin@thesouledstore.com',
-      hashed,
-      'TSS Admin'
-    );
-  }
 
   seedStoresIfEmpty(db);
 }

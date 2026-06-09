@@ -58,6 +58,8 @@ export default function Dashboard() {
   const [pinFilter, setPinFilter] = useState('');
   const [highlighted, setHighlighted] = useState(null);
   const [searchMeta, setSearchMeta] = useState(null);
+  const [excludedPincodes, setExcludedPincodes] = useState([]);
+  const [showExcludedPanel, setShowExcludedPanel] = useState(false);
   const [pendingStoreSwitch, setPendingStoreSwitch] = useState(null);
 
   const mapRef = useRef(null);
@@ -247,6 +249,8 @@ export default function Dashboard() {
 
   const applySearchResults = useCallback((data, { silent = false, storeName } = {}) => {
     setPincodes(data.pincodes);
+    setExcludedPincodes(data.excluded_pincodes || []);
+    setShowExcludedPanel(false);
     setSearchMeta({
       total_found: data.total_found,
       excluded: data.excluded,
@@ -284,7 +288,9 @@ export default function Dashboard() {
         applySearchResults(data, { silent: !notify, storeName: store.store_name });
       } else {
         setPincodes([]);
+        setExcludedPincodes([]);
         setSearchMeta(null);
+        setShowExcludedPanel(false);
         pincodeMarkersRef.current.forEach(m => m.setMap(null));
         pincodeMarkersRef.current = [];
       }
@@ -376,6 +382,27 @@ export default function Dashboard() {
     a.click(); URL.revokeObjectURL(a.href);
   };
 
+  const copyExcluded = () => {
+    navigator.clipboard.writeText(excludedPincodes.map(p => p.pincode).join(', '));
+    toast.success('Hidden pincodes copied!');
+  };
+
+  const downloadExcludedCSV = () => {
+    const rows = [['Pincode', 'Distance (km)', 'Name', 'City', 'State', 'Shiprocket']];
+    excludedPincodes.forEach(p => rows.push([p.pincode, p.distance, p.name || '', p.city || '', p.state || '', 'No']));
+    const blob = new Blob([rows.map(r => r.join(',')).join('\n')], { type: 'text/csv' });
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob),
+      download: `${selectedStore?.store_name}_${range}km_hidden_pincodes.csv`
+    });
+    a.click(); URL.revokeObjectURL(a.href);
+  };
+
+  const filteredExcluded = excludedPincodes.filter(p => {
+    const textMatch = !pinFilter || p.pincode.includes(pinFilter) || (p.name || '').toLowerCase().includes(pinFilter.toLowerCase());
+    return textMatch;
+  });
+
   // ── Derived data ───────────────────────────────────────────
   const zoneCounts = ZONES.map(z => ({
     ...z, count: pincodes.filter(p => getZone(p.distance).key === z.key).length
@@ -399,6 +426,70 @@ export default function Dashboard() {
 
   return (
     <div className="h-full flex flex-col bg-gray-50">
+
+      {showExcludedPanel && excludedPincodes.length > 0 && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Filter className="w-5 h-5 text-amber-600" />
+                  Hidden pincodes (not in Shiprocket)
+                </h3>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  {excludedPincodes.length} pincodes found in range but not in Shiprocket master list
+                </p>
+              </div>
+              <button onClick={() => setShowExcludedPanel(false)} className="text-gray-400 hover:text-gray-600 p-1">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="px-6 py-3 border-b border-gray-100 flex items-center gap-2 flex-shrink-0">
+              <button onClick={copyExcluded} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-medium">
+                <Copy className="w-3 h-3" />Copy all
+              </button>
+              <button onClick={downloadExcludedCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-medium">
+                <Download className="w-3 h-3" />Export CSV
+              </button>
+              <span className="ml-auto text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded-full font-medium">
+                Not serviceable via Shiprocket
+              </span>
+            </div>
+
+            <div className="overflow-auto flex-1">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    {['Pincode', 'Distance', 'Area', 'City', 'State'].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {filteredExcluded.map((p, i) => {
+                    const z = getZone(p.distance);
+                    return (
+                      <tr key={p.pincode} className={i % 2 === 0 ? 'bg-white' : 'bg-amber-50/30'}>
+                        <td className="px-4 py-2.5 font-mono font-bold text-gray-900">{p.pincode}</td>
+                        <td className="px-4 py-2.5">
+                          <span className={`inline-flex px-1.5 py-0.5 rounded-md text-xs font-semibold ${z.badge}`}>{p.distance} km</span>
+                        </td>
+                        <td className="px-4 py-2.5 text-gray-600 max-w-[140px] truncate">{p.name || '—'}</td>
+                        <td className="px-4 py-2.5 text-gray-600">{p.city || '—'}</td>
+                        <td className="px-4 py-2.5 text-gray-600">{p.state || '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {filteredExcluded.length === 0 && (
+                <p className="text-center text-sm text-gray-400 py-8">No hidden pincodes match your filter</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {pendingStoreSwitch && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
@@ -557,15 +648,26 @@ export default function Dashboard() {
             {searchMeta?.excluded > 0 && (
               <>
                 <div className="w-px h-8 bg-gray-100" />
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (excludedPincodes.length > 0) setShowExcludedPanel(true);
+                    else toast('Click Re-fetch to load hidden pincode details', { icon: 'ℹ️' });
+                  }}
+                  title="View hidden pincodes"
+                  className="flex items-center gap-2 rounded-xl px-2 py-1 -mx-2 hover:bg-amber-50 transition-colors group"
+                >
+                  <div className="w-8 h-8 bg-amber-50 group-hover:bg-amber-100 rounded-lg flex items-center justify-center">
                     <Filter className="w-4 h-4 text-amber-600" />
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-400">Hidden (not in Shiprocket)</p>
-                    <p className="text-lg font-bold text-amber-700 leading-tight">{searchMeta.excluded}</p>
+                  <div className="text-left">
+                    <p className="text-xs text-gray-400 group-hover:text-amber-700">Hidden (not in Shiprocket)</p>
+                    <p className="text-lg font-bold text-amber-700 leading-tight">
+                      {excludedPincodes.length || searchMeta.excluded}
+                      <span className="text-xs font-normal text-amber-600/70 ml-1.5">click to view</span>
+                    </p>
                   </div>
-                </div>
+                </button>
               </>
             )}
 
