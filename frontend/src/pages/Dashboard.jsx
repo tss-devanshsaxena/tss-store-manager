@@ -374,8 +374,9 @@ export default function Dashboard() {
   };
 
   const downloadCSV = () => {
-    const rows = [['Pincode', 'Distance (km)', 'Name', 'City', 'State']];
-    pincodes.forEach(p => rows.push([p.pincode, p.distance, p.name || '', p.city || '', p.state || '']));
+    const rows = [['Pincode', 'Distance (km)', 'Name', 'City', 'State', 'Serviceable']];
+    pincodes.forEach(p => rows.push([p.pincode, p.distance, p.name || '', p.city || '', p.state || '', 'Yes']));
+    excludedPincodes.forEach(p => rows.push([p.pincode, p.distance, p.name || '', p.city || '', p.state || '', 'No']));
     const blob = new Blob([rows.map(r => r.join(',')).join('\n')], { type: 'text/csv' });
     const a = Object.assign(document.createElement('a'), {
       href: URL.createObjectURL(blob),
