@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const { getDb } = require('./db/database');
 const { loadPostcodeMaster } = require('./lib/postcodeMaster');
+const { startScheduler } = require('./lib/scheduler');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -25,9 +26,10 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 
-// Init DB and Shiprocket postcode master on startup
+// Init DB, Shiprocket postcode master, and background scheduler on startup
 getDb();
 loadPostcodeMaster();
+startScheduler();
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/stores', require('./routes/stores'));
