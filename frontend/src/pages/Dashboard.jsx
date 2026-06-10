@@ -487,10 +487,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {regionalOpen && (
-        <RegionalSearch stores={stores} onClose={() => setRegionalOpen(false)} />
-      )}
-
       {pendingStoreSwitch && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
@@ -766,7 +762,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── Main split view ───────────────────────────────────── */}
+      {/* ── Main split view + regional sidebar ───────────────── */}
+      <div className="flex-1 flex overflow-hidden">
       <div className={`flex-1 flex overflow-hidden ${!hasResults ? 'flex-col' : ''}`}>
 
         {/* Map panel */}
@@ -939,6 +936,12 @@ export default function Dashboard() {
             <p className="text-sm text-gray-500">Fetching pincodes via OpenStreetMap…</p>
           </div>
         )}
+      </div>
+
+      {/* Regional sidebar */}
+      {regionalOpen && (
+        <RegionalSearch stores={stores} onClose={() => setRegionalOpen(false)} />
+      )}
       </div>
     </div>
   );
