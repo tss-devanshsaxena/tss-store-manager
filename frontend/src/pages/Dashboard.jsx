@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { storesApi, pincodesApi } from '../services/api';
 import { Loader } from '@googlemaps/js-api-loader';
 import toast from 'react-hot-toast';
+import { downloadExcel } from '../utils/exportExcel';
 import {
   MapPin, Search, RefreshCw, Store, Navigation2,
   ChevronDown, Copy, Download, Hash, Compass, Layers,
@@ -9,6 +10,7 @@ import {
 } from 'lucide-react';
 import HyperlocalBadge from '../components/HyperlocalBadge';
 import Logo from '../components/Logo';
+import RegionalSearch from '../components/RegionalSearch';
 
 const RANGES = [5, 10, 12, 15, 20];
 
@@ -56,6 +58,7 @@ export default function Dashboard() {
   const [storeOpen, setStoreOpen] = useState(false);
   const [storeSearch, setStoreSearch] = useState('');
   const storeSearchRef = useRef(null);
+  const [regionalOpen, setRegionalOpen] = useState(false);
   const [activeZone, setActiveZone] = useState('all');
   const [pinFilter, setPinFilter] = useState('');
   const [highlighted, setHighlighted] = useState(null);
@@ -377,12 +380,7 @@ export default function Dashboard() {
     const rows = [['Pincode', 'Distance (km)', 'Name', 'City', 'State', 'Serviceable']];
     pincodes.forEach(p => rows.push([p.pincode, p.distance, p.name || '', p.city || '', p.state || '', 'Yes']));
     excludedPincodes.forEach(p => rows.push([p.pincode, p.distance, p.name || '', p.city || '', p.state || '', 'No']));
-    const blob = new Blob([rows.map(r => r.join(',')).join('\n')], { type: 'text/csv' });
-    const a = Object.assign(document.createElement('a'), {
-      href: URL.createObjectURL(blob),
-      download: `${selectedStore?.store_name}_${range}km_pincodes.csv`
-    });
-    a.click(); URL.revokeObjectURL(a.href);
+    downloadExcel(rows, `${selectedStore?.store_name}_${range}km_pincodes.xlsx`);
   };
 
   const copyExcluded = () => {
@@ -391,14 +389,9 @@ export default function Dashboard() {
   };
 
   const downloadExcludedCSV = () => {
-    const rows = [['Pincode', 'Distance (km)', 'Name', 'City', 'State', 'Shiprocket']];
+    const rows = [['Pincode', 'Distance (km)', 'Name', 'City', 'State', 'Serviceable']];
     excludedPincodes.forEach(p => rows.push([p.pincode, p.distance, p.name || '', p.city || '', p.state || '', 'No']));
-    const blob = new Blob([rows.map(r => r.join(',')).join('\n')], { type: 'text/csv' });
-    const a = Object.assign(document.createElement('a'), {
-      href: URL.createObjectURL(blob),
-      download: `${selectedStore?.store_name}_${range}km_hidden_pincodes.csv`
-    });
-    a.click(); URL.revokeObjectURL(a.href);
+    downloadExcel(rows, `${selectedStore?.store_name}_${range}km_hidden_pincodes.xlsx`);
   };
 
   const filteredExcluded = excludedPincodes.filter(p => {
@@ -453,7 +446,7 @@ export default function Dashboard() {
                 <Copy className="w-3 h-3" />Copy all
               </button>
               <button onClick={downloadExcludedCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-medium">
-                <Download className="w-3 h-3" />Export CSV
+                <Download className="w-3 h-3" />Export Excel
               </button>
               <span className="ml-auto text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded-full font-medium">
                 Not serviceable via Shiprocket
@@ -492,6 +485,10 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {regionalOpen && (
+        <RegionalSearch stores={stores} onClose={() => setRegionalOpen(false)} />
       )}
 
       {pendingStoreSwitch && (
@@ -609,6 +606,15 @@ export default function Dashboard() {
               </button>
             ))}
           </div>
+
+          {/* Regional Search */}
+          <button
+            onClick={() => setRegionalOpen(true)}
+            disabled={loadingStores || stores.length === 0}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 hover:border-gray-300 transition-colors disabled:opacity-50 shadow-sm"
+          >
+            <MapPin className="w-4 h-4" />Regional
+          </button>
 
           {/* Search */}
           <button
@@ -753,7 +759,7 @@ export default function Dashboard() {
                 <Copy className="w-3 h-3" />Copy All
               </button>
               <button onClick={downloadCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-xs font-medium transition-colors">
-                <Download className="w-3 h-3" />CSV
+                <Download className="w-3 h-3" />Excel
               </button>
             </div>
           </div>
