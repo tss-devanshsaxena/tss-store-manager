@@ -6,6 +6,8 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "build:postcodes": "node scripts/build-postcode-master.js",
+    "build:centroids": "node scripts/build-pincode-centroids.js",
+    "import:excel": "node scripts/import-excel-pincodes.js",
     "replace:stores": "node scripts/replace-stores.js"
   },
   "dependencies": {

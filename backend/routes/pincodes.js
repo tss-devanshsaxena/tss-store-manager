@@ -4,7 +4,7 @@ const { authMiddleware } = require('../middleware/auth');
 const { isServiceablePincode, getMasterCount } = require('../lib/postcodeMaster');
 const { getCachedSearch, saveCache } = require('../lib/pincodeCache');
 const { queryOverpass } = require('../lib/overpassClient');
-const { isPincodePlausibleAtCoords } = require('../lib/pincodeRegion');
+const { isPincodePlausibleAtCoords, isPincodeCentroidNearStore } = require('../lib/pincodeRegion');
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -84,6 +84,11 @@ out body;
     if (dist > radiusKm) continue;
 
     if (!isPincodePlausibleAtCoords(pincode, elLat, elLon)) {
+      mislabeledFiltered += 1;
+      continue;
+    }
+
+    if (!isPincodeCentroidNearStore(pincode, latitude, longitude, radiusKm)) {
       mislabeledFiltered += 1;
       continue;
     }
