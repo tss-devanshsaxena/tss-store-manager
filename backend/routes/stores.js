@@ -58,7 +58,7 @@ router.post('/bulk', adminMiddleware, (req, res) => {
       state_name = excluded.state_name,
       pincode = excluded.pincode,
       is_active = excluded.is_active,
-      is_hyperlocal = excluded.is_hyperlocal,
+      is_hyperlocal = CASE WHEN excluded.is_hyperlocal = 1 THEN 1 ELSE stores.is_hyperlocal END,
       updated_at = CURRENT_TIMESTAMP
   `);
 
